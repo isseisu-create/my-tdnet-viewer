@@ -1,37 +1,48 @@
-import feedparser
-import json
 import requests
+from bs4 import BeautifulSoup
+import json
 import datetime
 
 def fetch():
-    # TDnetのRSS
-    RSS_URL = "https://www.release.tdnet.info/inbs/I_main_00.html"
+    # 教えていただいたURL
+    URL = "https://www.release.tdnet.info/inbs/I_main_00.html"
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     data = []
     try:
-        response = requests.get(RSS_URL, headers=headers, timeout=15)
-        d = feedparser.parse(response.text)
+        response = requests.get(URL, headers=headers, timeout=15)
+        response.encoding = response.apparent_encoding
         
-        for e in d.entries:
-            data.append({
-                "date": e.published if hasattr(e, 'published') else "時間不明",
-                "title": e.title,
-                "url": e.link
-            })
+        # HTMLを解析してテーブルの行を取得
+        soup = BeautifulSoup(response.text, 'html.parser')
+        rows = soup.find_all('tr') # 行(tr)をすべて探す
+        
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) >= 5: # 必要なデータが揃っている行だけ処理
+                date = cols[0].get_text(strip=True)
+                time = cols[1].get_text(strip=True)
+                code = cols[2].get_text(strip=True)
+                name = cols[3].get_text(strip=True)
+                title = cols[4].get_text(strip=True)
+                # PDFリンクを取得
+                link_tag = cols[4].find('a')
+                url = "https://www.release.tdnet.info/inbs/" + link_tag.get('href') if link_tag else "#"
+                
+                data.append({
+                    "date": f"{date} {time}",
+                    "name": name,
+                    "code": code,
+                    "title": title,
+                    "url": url
+                })
     except Exception as e:
         print(f"Error: {e}")
 
-    # --- ここが重要！データが空の場合でも、中身を無理やり作る ---
+    # もし空ならメッセージを入れる
     if not data:
-        now = datetime.datetime.now().strftime('%H:%M:%S')
-        data = [{
-            "date": f"システム状況: {now}",
-            "title": "【ボット稼働中】現在、TDnetに新着情報はありません。発表があれば自動更新されます。",
-            "url": "https://www.release.tdnet.info/"
-        }]
+        data = [{"date": "確認中", "title": "現在、新着情報が取得できません。URLの構造が変わった可能性があります。", "url": "#"}]
 
-    # 保存
     with open('data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
