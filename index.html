@@ -2,32 +2,57 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TDnet Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-white p-5">
-    <h1 class="text-xl font-bold mb-4">TDnet 最新開示</h1>
-    <div id="content" class="space-y-4">読み込み中...</div>
+<body class="bg-slate-900 text-slate-100 p-4">
+    <h1 class="text-xl font-bold mb-6 border-b border-slate-700 pb-2">📈 TDnet リアルタイム巡回</h1>
+    
+    <div id="status" class="text-sm text-yellow-400 mb-4">接続を確認中...</div>
+    <div id="content" class="grid gap-4"></div>
 
     <script>
-        async function load() {
+        async function loadData() {
+            const statusEl = document.getElementById('status');
+            const contentEl = document.getElementById('content');
+            
             try {
-                // ファイル名を正確に指定（?t=でキャッシュを防止）
-                const r = await fetch('data.json?t=' + Date.now());
-                if (!r.ok) throw new Error('データファイルが見つかりません');
-                const data = await r.json();
-                document.getElementById('content').innerHTML = data.map(i => `
-                    <div class="p-4 bg-slate-800 rounded shadow">
-                        <div class="text-xs text-slate-400">${i.date}</div>
-                        <div class="font-bold">${i.title}</div>
-                        <a href="${i.url}" target="_blank" class="text-blue-400 text-sm">PDFを表示</a>
+                // キャッシュを避けるために時刻を付けて取得
+                const response = await fetch('data.json?t=' + Date.now());
+                
+                if (!response.ok) {
+                    throw new Error('data.jsonが見つかりません（404）');
+                }
+
+                const data = await response.json();
+                statusEl.innerText = `合計 ${data.length} 件のデータを表示中`;
+                statusEl.className = "text-sm text-green-400 mb-4";
+
+                if (data.length === 0) {
+                    contentEl.innerHTML = '<div class="text-slate-500">データが空です。</div>';
+                    return;
+                }
+
+                contentEl.innerHTML = data.map(item => `
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 shadow-sm">
+                        <div class="text-xs text-slate-400 mb-1">${item.date}</div>
+                        <div class="font-medium text-white mb-2">${item.title}</div>
+                        <a href="${item.url}" target="_blank" class="inline-block text-blue-400 text-sm hover:underline">
+                            PDFリンク ↗
+                        </a>
                     </div>
                 `).join('');
-            } catch (e) {
-                document.getElementById('content').innerText = 'エラー: ' + e.message;
+
+            } catch (error) {
+                statusEl.innerText = 'エラー発生: ' + error.message;
+                statusEl.className = "text-sm text-red-400 mb-4";
+                console.error(error);
             }
         }
-        load();
+
+        // ページ読み込み時に実行
+        window.onload = loadData;
     </script>
 </body>
 </html>
