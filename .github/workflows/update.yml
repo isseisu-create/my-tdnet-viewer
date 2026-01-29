@@ -1,16 +1,19 @@
 name: Update
 on:
-  schedule: [{cron: "*/30 * * *"}] # 30分ごと
-  workflow_dispatch: # 手動実行用
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
 jobs:
   run:
     runs-on: ubuntu-latest
-    permissions: {contents: write}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v4
-        with: {python-version: '3.9'}
+        with:
+          python-version: '3.9'
       - run: pip install feedparser
       - run: python scraper.py
       - name: Push
